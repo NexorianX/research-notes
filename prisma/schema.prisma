@@ -1,0 +1,171 @@
+// Research Notes — Prisma schema
+// NOTE: Spec asked for Supabase PostgreSQL for v1. This sandbox has no
+// reachable external database, so SQLite (file-based, persistent on disk)
+// is used instead to satisfy the "no LocalStorage as real DB" requirement.
+// The schema is written to be trivially portable to PostgreSQL later:
+// swap `provider = "sqlite"` for `"postgresql"`, point DATABASE_URL at
+// Supabase, and re-run `prisma migrate`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  semester    String?
+  color       String?  // small UI accent, e.g. "blue" | "green" | "purple"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lessons Lesson[]
+}
+
+enum LessonProvider {
+  doway
+  manual
+  upload
+}
+
+enum SyncStatus {
+  SYNCING
+  SYNCED
+  PARTIAL
+  FAILED
+  MANUAL
+}
+
+model Lesson {
+  id        String   @id @default(cuid())
+  courseId  String
+  week      Int?
+  date      DateTime
+  title     String
+  duration  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course        Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  source        LessonSource?
+  content       LessonContent?
+  notes         Note[]
+  tags          TagOnLesson[]
+  bookmark      Bookmark?
+  reviewStatus  ReviewStatus?
+  thesisIdeas   ThesisIdea[]
+
+  @@index([courseId])
+  @@index([date])
+}
+
+model LessonSource {
+  id           String         @id @default(cuid())
+  lessonId     String         @unique
+  provider     LessonProvider @default(manual)
+  sourceUrl    String?
+  externalId   String?
+  syncStatus   SyncStatus     @default(MANUAL)
+  lastSyncedAt DateTime?
+  rawData      String? // JSON string, kept for debugging provider page-structure changes
+  errorMessage String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model LessonContent {
+  id         String   @id @default(cuid())
+  lessonId   String   @unique
+  summary    String? // markdown, read-only, from DOWAY
+  transcript String? // JSON string: array of { time?: string; speaker?: string; text: string }
+  mindMap    String? // JSON string: tree structure { name, children[] } OR image URL fallback
+  audioUrl   String?
+  updatedAt  DateTime @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  lessonId  String
+  content   String // markdown, editable, personal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique
+
+  lessons     TagOnLesson[]
+  thesisTags  ThesisIdeaTag[]
+}
+
+model TagOnLesson {
+  lessonId String
+  tagId    String
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, tagId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  lessonId  String   @unique
+  createdAt DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+enum ReviewStatusValue {
+  NOT_REVIEWED
+  REVIEWED
+  NEED_REVIEW
+  EXAM_FOCUS
+}
+
+model ReviewStatus {
+  id        String            @id @default(cuid())
+  lessonId  String            @unique
+  status    ReviewStatusValue @default(NOT_REVIEWED)
+  updatedAt DateTime          @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model ThesisIdea {
+  id         String   @id @default(cuid())
+  lessonId   String
+  sourceType String // "summary" | "transcript" | "manual"
+  sourceText String?
+  content    String // "my thought"
+  createdAt  DateTime @default(now())
+
+  lesson Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  tags   ThesisIdeaTag[]
+
+  @@index([lessonId])
+}
+
+model ThesisIdeaTag {
+  thesisIdeaId String
+  tagId        String
+
+  thesisIdea ThesisIdea @relation(fields: [thesisIdeaId], references: [id], onDelete: Cascade)
+  tag        Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([thesisIdeaId, tagId])
+}
