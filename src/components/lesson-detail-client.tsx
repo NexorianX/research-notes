@@ -217,7 +217,7 @@ export function LessonDetailClient({
         {/* Main content */}
         <div className="min-w-0">
           <Tabs defaultValue="overview">
-            <TabsList className="flex-wrap">
+            <TabsList className="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 sm:mx-0 sm:w-full sm:overflow-visible sm:px-0">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="summary">Summary</TabsTrigger>
               <TabsTrigger value="mindmap">Mind Map</TabsTrigger>
