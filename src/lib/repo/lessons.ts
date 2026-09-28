@@ -112,7 +112,7 @@ export async function listLessonSummaries(filter?: {
   for (const row of lessons) {
     const tags = await getTagsForLesson(row.id);
     const noteRow = await queryOne<{ n: string }>(
-      `SELECT COUNT(*) as n FROM notes WHERE lesson_id = $1`,
+      `SELECT COUNT(*) as n FROM notes WHERE lesson_id = $1 AND TRIM(content) != ''`,
       [row.id]
     );
     const bookmarkRow = await queryOne(`SELECT id FROM bookmarks WHERE lesson_id = $1`, [row.id]);

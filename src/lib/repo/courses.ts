@@ -90,7 +90,7 @@ export async function listCourseCards(): Promise<CourseCardView[]> {
     const noteCountRow = await queryOne<{ n: string }>(
       `SELECT COUNT(*) as n FROM notes n
        JOIN lessons l ON l.id = n.lesson_id
-       WHERE l.course_id = $1`,
+       WHERE l.course_id = $1 AND TRIM(n.content) != ''`,
       [c.id]
     );
     const needReviewRow = await queryOne<{ n: string }>(

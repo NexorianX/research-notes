@@ -15,9 +15,9 @@ function parseShareUrl(url: string): { hostname: string; shareId: string } | nul
   } catch {
     return null;
   }
-  if (parsed.protocol !== "https:") return null;
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port) return null;
   if (!ALLOWED_HOSTS.has(parsed.hostname)) return null;
-  const match = parsed.pathname.match(/\/share\/([A-Za-z0-9_-]+)\/?$/);
+  const match = parsed.pathname.match(/^\/share\/([A-Za-z0-9_-]+)\/?$/);
   if (!match) return null;
   const shareId = match[1];
   if (!SHARE_ID_PATTERN.test(shareId)) return null;
@@ -33,7 +33,7 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   try {
     return await fetch(url, {
       signal: controller.signal,
-      redirect: "follow",
+      redirect: "error",
       headers: {
         "user-agent":
           "Mozilla/5.0 (compatible; ResearchNotesBot/1.0; +lesson-importer)",
@@ -168,7 +168,7 @@ async function strategyB(
       })
       .catch(() => ({ summary: undefined, transcript: undefined }));
 
-    if (!text.summary && !text.transcript && !title) return null;
+    if (!text.summary && !text.transcript) return null;
 
     return {
       title,

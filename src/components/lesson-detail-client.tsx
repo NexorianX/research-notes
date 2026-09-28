@@ -76,7 +76,7 @@ export function LessonDetailClient({
   const router = useRouter();
 
   const [notes, setNotes] = React.useState(initialNoteContent);
-  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -95,15 +95,16 @@ export function LessonDetailClient({
     async (value: string) => {
       setSaveState("saving");
       try {
-        await fetch(`/api/lessons/${lesson.id}/notes`, {
+        const response = await fetch(`/api/lessons/${lesson.id}/notes`, {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ content: value }),
         });
+        if (!response.ok) throw new Error("Save failed");
         setSaveState("saved");
         setLastSaved(new Date());
       } catch {
-        setSaveState("idle");
+        setSaveState("error");
       }
     },
     [lesson.id]
@@ -161,7 +162,9 @@ export function LessonDetailClient({
   }
 
   const saveLabel =
-    saveState === "saving"
+    saveState === "error"
+      ? "儲存失敗，請保留內容並再次編輯以儲存"
+      : saveState === "saving"
       ? "Saving..."
       : saveState === "saved" && lastSaved
       ? `Saved · Last saved ${lastSaved.toLocaleTimeString("zh-TW", {

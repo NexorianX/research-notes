@@ -4,3 +4,9 @@ node_modules/
 *.db-wal
 *.db-shm
 npm-debug.log*
+
+.env
+.env.*
+!.env.example
+.vercel/
+*.tsbuildinfo

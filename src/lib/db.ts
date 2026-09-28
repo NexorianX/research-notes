@@ -30,6 +30,8 @@ function createPool(): Pool {
       ? undefined
       : { rejectUnauthorized: false },
     max: 5,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 20000,
   });
 }
 
