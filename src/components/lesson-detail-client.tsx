@@ -134,9 +134,11 @@ export function LessonDetailClient({
   }
 
   function insertQuoteIntoNotes(text: string) {
-    const block = `> ${text.trim()}\n\n我的想法：\n\n`;
+    if (!text.trim()) return;
+    const block = `${text.trim().split("\n").map(line => `> ${line}`).join("\n")}\n\n我的想法：\n\n`;
     const next = notes ? `${notes}\n\n${block}` : block;
     handleNotesChange(next);
+    setActiveTab("notes");
   }
 
   async function toggleBookmark() {
@@ -344,9 +346,11 @@ export function LessonDetailClient({
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-neutral-400">
                   <span>我的筆記（自動儲存，支援 Markdown）</span>
-                  <span>{saveLabel}</span>
+                  <span role="status" aria-live="polite">{saveLabel}</span>
                 </div>
+                {saveState === "error" && <Button variant="outline" size="sm" onClick={() => doSave(notes)}>重試儲存</Button>}
                 <Textarea
+                  aria-label="我的筆記"
                   value={notes}
                   onChange={(e) => handleNotesChange(e.target.value)}
                   rows={16}
@@ -551,12 +555,11 @@ function SelectableBlock({
   React.useEffect(() => {
     function handler() {
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !ref.current) {
-        setSelected("");
-        return;
-      }
+      // Keep the captured quote when button focus collapses the browser selection.
+      // Otherwise selectionchange can unmount the button before click is delivered.
+      if (!sel || sel.isCollapsed || !ref.current) return;
       const text = sel.toString().trim();
-      if (text && ref.current.contains(sel.anchorNode)) {
+      if (text && ref.current.contains(sel.anchorNode) && ref.current.contains(sel.focusNode)) {
         setSelected(text);
       } else {
         setSelected("");
@@ -572,13 +575,14 @@ function SelectableBlock({
         <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-2 text-xs dark:border-neutral-800 dark:bg-neutral-900">
           <Quote className="h-3.5 w-3.5 shrink-0" />
           <span className="line-clamp-1 flex-1 text-neutral-500">「{selected}」</span>
-          <Button size="sm" variant="outline" onClick={() => onAddToNotes(selected)}>
+          <Button size="sm" variant="outline" onClick={() => { onAddToNotes(selected); setSelected(""); }}>
             加入筆記
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onAddThesisIdea(selected)}>
+          <Button size="sm" variant="outline" onClick={() => { onAddThesisIdea(selected); setSelected(""); }}>
             <Lightbulb className="h-3.5 w-3.5" />
             論文靈感
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected("")}>取消選取</Button>
         </div>
       )}
       <div ref={ref}>{children}</div>
