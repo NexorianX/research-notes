@@ -9,7 +9,7 @@ import type {
   ReviewStatusValue,
 } from "@/lib/types";
 import { getCourse } from "@/lib/repo/courses";
-import { setTagsForLesson, getTagsForLesson } from "@/lib/repo/tags";
+import { setTagsForLesson } from "@/lib/repo/tags";
 
 function rowToLesson(row: any): Lesson {
   return {
@@ -57,21 +57,33 @@ export async function getLesson(id: string): Promise<Lesson | null> {
   return row ? rowToLesson(row) : null;
 }
 
-export async function getLessonSource(lessonId: string): Promise<LessonSource | null> {
-  const row = await queryOne(`SELECT * FROM lesson_sources WHERE lesson_id = $1`, [lessonId]);
+export async function getLessonSource(
+  lessonId: string,
+): Promise<LessonSource | null> {
+  const row = await queryOne(
+    `SELECT * FROM lesson_sources WHERE lesson_id = $1`,
+    [lessonId],
+  );
   return row ? rowToSource(row) : null;
 }
 
-export async function getLessonContent(lessonId: string): Promise<LessonContent | null> {
-  const row = await queryOne(`SELECT * FROM lesson_contents WHERE lesson_id = $1`, [lessonId]);
+export async function getLessonContent(
+  lessonId: string,
+): Promise<LessonContent | null> {
+  const row = await queryOne(
+    `SELECT * FROM lesson_contents WHERE lesson_id = $1`,
+    [lessonId],
+  );
   return row ? rowToContent(row) : null;
 }
 
-export async function listLessons(filter?: { courseId?: string }): Promise<Lesson[]> {
+export async function listLessons(filter?: {
+  courseId?: string;
+}): Promise<Lesson[]> {
   if (filter?.courseId) {
     const rows = await query(
       `SELECT * FROM lessons WHERE course_id = $1 ORDER BY date DESC`,
-      [filter.courseId]
+      [filter.courseId],
     );
     return rows.map(rowToLesson);
   }
@@ -80,11 +92,14 @@ export async function listLessons(filter?: { courseId?: string }): Promise<Lesso
 }
 
 async function ensureReviewStatus(lessonId: string) {
-  const existing = await queryOne(`SELECT id FROM review_status WHERE lesson_id = $1`, [lessonId]);
+  const existing = await queryOne(
+    `SELECT id FROM review_status WHERE lesson_id = $1`,
+    [lessonId],
+  );
   if (!existing) {
     await query(
       `INSERT INTO review_status (id, lesson_id, status, updated_at) VALUES ($1, $2, 'NOT_REVIEWED', $3)`,
-      [nanoid(), lessonId, new Date().toISOString()]
+      [nanoid(), lessonId, new Date().toISOString()],
     );
   }
 }
@@ -94,59 +109,53 @@ export async function listLessonSummaries(filter?: {
   courseId?: string;
   limit?: number;
 }): Promise<LessonSummaryView[]> {
-  const lessons = filter?.courseId
-    ? await query<any>(
-        `SELECT l.*, c.name as course_name FROM lessons l
-         JOIN courses c ON c.id = l.course_id
-         WHERE l.course_id = $1 ORDER BY l.date DESC, l.week DESC`,
-        [filter.courseId]
-      )
-    : await query<any>(
-        `SELECT l.*, c.name as course_name FROM lessons l
-         JOIN courses c ON c.id = l.course_id
-         ORDER BY l.date DESC, l.week DESC
-         ${filter?.limit ? `LIMIT ${Number(filter.limit)}` : ""}`
-      );
-
-  const results: LessonSummaryView[] = [];
-  for (const row of lessons) {
-    const tags = await getTagsForLesson(row.id);
-    const noteRow = await queryOne<{ n: string }>(
-      `SELECT COUNT(*) as n FROM notes WHERE lesson_id = $1 AND TRIM(content) != ''`,
-      [row.id]
-    );
-    const bookmarkRow = await queryOne(`SELECT id FROM bookmarks WHERE lesson_id = $1`, [row.id]);
-    const reviewRow = await queryOne<{ status: string }>(
-      `SELECT status FROM review_status WHERE lesson_id = $1`,
-      [row.id]
-    );
-    const contentRow = await queryOne<{ summary: string | null }>(
-      `SELECT summary FROM lesson_contents WHERE lesson_id = $1`,
-      [row.id]
-    );
-    const sourceRow = await queryOne<{ import_status: string; provider: string }>(
-      `SELECT import_status, provider FROM lesson_sources WHERE lesson_id = $1`,
-      [row.id]
-    );
-
-    results.push({
-      id: row.id,
-      courseId: row.course_id,
-      courseName: row.course_name,
-      week: row.week,
-      date: row.date,
-      title: row.title,
-      duration: row.duration,
-      tags,
-      hasNotes: Number(noteRow?.n ?? 0) > 0,
-      isBookmarked: !!bookmarkRow,
-      reviewStatus: (reviewRow?.status as ReviewStatusValue) ?? "NOT_REVIEWED",
-      summaryPreview: contentRow?.summary ? String(contentRow.summary).slice(0, 140) : null,
-      importStatus: (sourceRow?.import_status as any) ?? null,
-      provider: (sourceRow?.provider as any) ?? null,
-    });
-  }
-  return results;
+  const rows = await query<{
+    id: string;
+    course_id: string;
+    course_name: string;
+    week: number | null;
+    date: string;
+    title: string;
+    duration: string | null;
+    tags: string[];
+    has_notes: boolean;
+    bookmarked: boolean;
+    review_status: ReviewStatusValue | null;
+    summary_preview: string | null;
+    import_status: LessonSource["importStatus"] | null;
+    provider: LessonSource["provider"] | null;
+  }>(
+    `SELECT l.*, c.name AS course_name,
+    COALESCE((SELECT array_agg(t.name ORDER BY t.name) FROM tags t JOIN tag_on_lesson tl ON tl.tag_id=t.id WHERE tl.lesson_id=l.id), ARRAY[]::text[]) AS tags,
+    EXISTS(SELECT 1 FROM notes n WHERE n.lesson_id=l.id AND TRIM(n.content) != '') AS has_notes,
+    EXISTS(SELECT 1 FROM bookmarks b WHERE b.lesson_id=l.id) AS bookmarked,
+    rs.status AS review_status, LEFT(lc.summary,140) AS summary_preview,
+    ls.import_status, ls.provider
+    FROM lessons l JOIN courses c ON c.id=l.course_id
+    LEFT JOIN review_status rs ON rs.lesson_id=l.id
+    LEFT JOIN lesson_contents lc ON lc.lesson_id=l.id
+    LEFT JOIN lesson_sources ls ON ls.lesson_id=l.id
+    WHERE ($1::text IS NULL OR l.course_id=$1)
+    ORDER BY l.date DESC,l.week DESC,l.id
+    LIMIT $2`,
+    [filter?.courseId ?? null, filter?.limit ?? null],
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    courseId: row.course_id,
+    courseName: row.course_name,
+    week: row.week,
+    date: row.date,
+    title: row.title,
+    duration: row.duration,
+    tags: row.tags,
+    hasNotes: row.has_notes,
+    isBookmarked: row.bookmarked,
+    reviewStatus: row.review_status ?? "NOT_REVIEWED",
+    summaryPreview: row.summary_preview,
+    importStatus: row.import_status,
+    provider: row.provider,
+  }));
 }
 
 export interface CreateLessonInput {
@@ -158,7 +167,9 @@ export interface CreateLessonInput {
   tags?: string[];
 }
 
-export async function createLessonShell(input: CreateLessonInput): Promise<Lesson> {
+export async function createLessonShell(
+  input: CreateLessonInput,
+): Promise<Lesson> {
   const course = await getCourse(input.courseId);
   if (!course) throw new Error("COURSE_NOT_FOUND");
   const id = nanoid();
@@ -166,7 +177,16 @@ export async function createLessonShell(input: CreateLessonInput): Promise<Lesso
   await query(
     `INSERT INTO lessons (id, course_id, week, date, title, duration, created_at, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [id, input.courseId, input.week ?? null, input.date, input.title, input.duration ?? null, now, now]
+    [
+      id,
+      input.courseId,
+      input.week ?? null,
+      input.date,
+      input.title,
+      input.duration ?? null,
+      now,
+      now,
+    ],
   );
   await ensureReviewStatus(id);
   if (input.tags && input.tags.length) {
@@ -177,15 +197,18 @@ export async function createLessonShell(input: CreateLessonInput): Promise<Lesso
 
 export async function upsertLessonSource(
   lessonId: string,
-  normalized: NormalizedLessonSource
+  normalized: NormalizedLessonSource,
 ): Promise<LessonSource> {
   const now = new Date().toISOString();
   const existing = await getLessonSource(lessonId);
-  const rawData = normalized.rawData ? JSON.stringify(normalized.rawData) : null;
+  const rawData = normalized.rawData
+    ? JSON.stringify(normalized.rawData)
+    : null;
   const importedAt =
-    normalized.importStatus === "IMPORTED" || normalized.importStatus === "PARTIAL"
+    normalized.importStatus === "IMPORTED" ||
+    normalized.importStatus === "PARTIAL"
       ? now
-      : existing?.importedAt ?? null;
+      : (existing?.importedAt ?? null);
 
   if (existing) {
     await query(
@@ -202,7 +225,7 @@ export async function upsertLessonSource(
         normalized.errorMessage ?? null,
         now,
         lessonId,
-      ]
+      ],
     );
   } else {
     await query(
@@ -221,7 +244,7 @@ export async function upsertLessonSource(
         normalized.errorMessage ?? null,
         now,
         now,
-      ]
+      ],
     );
   }
   return (await getLessonSource(lessonId))!;
@@ -239,11 +262,13 @@ export async function upsertLessonContent(
     transcript?: NormalizedLessonSource["transcript"];
     mindMap?: NormalizedLessonSource["mindMap"];
     audioUrl?: string | null;
-  }
+  },
 ): Promise<LessonContent> {
   const now = new Date().toISOString();
   const existing = await getLessonContent(lessonId);
-  const transcript = content.transcript ? JSON.stringify(content.transcript) : null;
+  const transcript = content.transcript
+    ? JSON.stringify(content.transcript)
+    : null;
   const mindMap = content.mindMap ? JSON.stringify(content.mindMap) : null;
 
   if (existing) {
@@ -252,18 +277,27 @@ export async function upsertLessonContent(
        WHERE lesson_id = $6`,
       [
         content.summary ?? existing.summary,
-        transcript ?? (existing.transcript ? JSON.stringify(existing.transcript) : null),
+        transcript ??
+          (existing.transcript ? JSON.stringify(existing.transcript) : null),
         mindMap ?? (existing.mindMap ? JSON.stringify(existing.mindMap) : null),
         content.audioUrl ?? existing.audioUrl,
         now,
         lessonId,
-      ]
+      ],
     );
   } else {
     await query(
       `INSERT INTO lesson_contents (id, lesson_id, summary, transcript, mind_map, audio_url, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [nanoid(), lessonId, content.summary ?? null, transcript, mindMap, content.audioUrl ?? null, now]
+      [
+        nanoid(),
+        lessonId,
+        content.summary ?? null,
+        transcript,
+        mindMap,
+        content.audioUrl ?? null,
+        now,
+      ],
     );
   }
   return (await getLessonContent(lessonId))!;
@@ -277,7 +311,7 @@ export async function updateLesson(
     title: string;
     duration: string | null;
     courseId: string;
-  }>
+  }>,
 ): Promise<Lesson | null> {
   const existing = await getLesson(id);
   if (!existing) return null;
@@ -292,12 +326,14 @@ export async function updateLesson(
       input.duration !== undefined ? input.duration : existing.duration,
       now,
       id,
-    ]
+    ],
   );
   return getLesson(id);
 }
 
 export async function deleteLesson(id: string): Promise<boolean> {
-  const rows = await query(`DELETE FROM lessons WHERE id = $1 RETURNING id`, [id]);
+  const rows = await query(`DELETE FROM lessons WHERE id = $1 RETURNING id`, [
+    id,
+  ]);
   return rows.length > 0;
 }

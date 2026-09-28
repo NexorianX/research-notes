@@ -49,3 +49,9 @@ GitHub repository: `NexorianX/research-notes`，匯入 Vercel，使用 Next.js �
 - **搜尋**：課程、日期篩選，支援學習筆記、校訂、逐字稿與既有筆記內容；結果附命中片段與段落連結。每頁 40 筆。
 - `lesson_studies` 保存每堂課的結構化內容，`study_revisions` 保留歷次儲存快照。版本衝突回傳 409，避免跨分頁覆寫；來源快照不符也拒絕保存。既有資料無需重新匯入。
 - 驗證：`node tests/study.integration.cjs` 使用目前資料庫連線建立隔離的暫存 schema，測完刪除；測試涵蓋原文保護、來源驗證、並行保存衝突、分類搜尋與時間定位。需要 CREATE SCHEMA 權限。
+
+### 效能
+
+Vercel 運算區域固定為東京 `hnd1`，與目前 Supabase 的 `ap-northeast-1` 區域相近。首頁的統計、課程卡片及最近課堂各使用一次合併查詢，獨立資料並行讀取；課堂頁不再因為瀏覽而建立空白筆記，也不向前端序列化匯入除錯原始資料。`loading.tsx` 提供頁面切換時的即時回饋。
+
+`node tests/performance-regression.cjs` 以唯讀方式比對與效能修正前版本的課程、標籤、複習狀態與統計，需可連線的 `DATABASE_URL` 及 Git 歷史。

@@ -43,7 +43,7 @@ export async function createCourse(input: {
       input.color ?? null,
       now,
       now,
-    ]
+    ],
   );
   return (await getCourse(id))!;
 }
@@ -55,7 +55,7 @@ export async function updateCourse(
     description: string | null;
     semester: string | null;
     color: string | null;
-  }>
+  }>,
 ): Promise<Course | null> {
   const existing = await getCourse(id);
   if (!existing) return null;
@@ -64,52 +64,37 @@ export async function updateCourse(
     `UPDATE courses SET name = $1, description = $2, semester = $3, color = $4, updated_at = $5 WHERE id = $6`,
     [
       input.name ?? existing.name,
-      input.description !== undefined ? input.description : existing.description,
+      input.description !== undefined
+        ? input.description
+        : existing.description,
       input.semester !== undefined ? input.semester : existing.semester,
       input.color !== undefined ? input.color : existing.color,
       now,
       id,
-    ]
+    ],
   );
   return getCourse(id);
 }
 
 export async function deleteCourse(id: string): Promise<boolean> {
-  const rows = await query(`DELETE FROM courses WHERE id = $1 RETURNING id`, [id]);
+  const rows = await query(`DELETE FROM courses WHERE id = $1 RETURNING id`, [
+    id,
+  ]);
   return rows.length > 0;
 }
 
 export async function listCourseCards(): Promise<CourseCardView[]> {
-  const courses = await listCourses();
-  const cards: CourseCardView[] = [];
-  for (const c of courses) {
-    const lessonCountRow = await queryOne<{ n: string }>(
-      `SELECT COUNT(*) as n FROM lessons WHERE course_id = $1`,
-      [c.id]
-    );
-    const noteCountRow = await queryOne<{ n: string }>(
-      `SELECT COUNT(*) as n FROM notes n
-       JOIN lessons l ON l.id = n.lesson_id
-       WHERE l.course_id = $1 AND TRIM(n.content) != ''`,
-      [c.id]
-    );
-    const needReviewRow = await queryOne<{ n: string }>(
-      `SELECT COUNT(*) as n FROM review_status rs
-       JOIN lessons l ON l.id = rs.lesson_id
-       WHERE l.course_id = $1 AND rs.status = 'NEED_REVIEW'`,
-      [c.id]
-    );
-    const lastLesson = await queryOne<{ date: string }>(
-      `SELECT date FROM lessons WHERE course_id = $1 ORDER BY date DESC LIMIT 1`,
-      [c.id]
-    );
-    cards.push({
-      ...c,
-      lessonCount: Number(lessonCountRow?.n ?? 0),
-      noteCount: Number(noteCountRow?.n ?? 0),
-      needReviewCount: Number(needReviewRow?.n ?? 0),
-      lastLessonDate: lastLesson?.date ?? null,
-    });
-  }
-  return cards;
+  const rows = await query(`SELECT c.*,
+    (SELECT COUNT(*) FROM lessons l WHERE l.course_id=c.id) AS lesson_count,
+    (SELECT COUNT(*) FROM notes n JOIN lessons l ON l.id=n.lesson_id WHERE l.course_id=c.id AND TRIM(n.content) != '') AS note_count,
+    (SELECT COUNT(*) FROM review_status rs JOIN lessons l ON l.id=rs.lesson_id WHERE l.course_id=c.id AND rs.status='NEED_REVIEW') AS need_review_count,
+    (SELECT MAX(l.date) FROM lessons l WHERE l.course_id=c.id) AS last_lesson_date
+    FROM courses c ORDER BY c.created_at ASC`);
+  return rows.map((row) => ({
+    ...rowToCourse(row),
+    lessonCount: Number(row.lesson_count),
+    noteCount: Number(row.note_count),
+    needReviewCount: Number(row.need_review_count),
+    lastLessonDate: row.last_lesson_date ?? null,
+  }));
 }

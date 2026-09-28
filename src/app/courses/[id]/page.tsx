@@ -15,8 +15,10 @@ export default async function CourseTimelinePage({
   const course = await getCourse(id);
   if (!course) notFound();
 
-  const lessons = await listLessonSummaries({ courseId: id });
-  const allCourses = await listCourses();
+  const [lessons, allCourses] = await Promise.all([
+    listLessonSummaries({ courseId: id }),
+    listCourses(),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:px-8">

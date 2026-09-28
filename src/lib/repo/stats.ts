@@ -1,18 +1,14 @@
 import { queryOne } from "@/lib/db";
-
 export async function getGlobalStats() {
-  const courseCount = (await queryOne<{ n: string }>(`SELECT COUNT(*) as n FROM courses`))!.n;
-  const lessonCount = (await queryOne<{ n: string }>(`SELECT COUNT(*) as n FROM lessons`))!.n;
-  const noteCount = (
-    await queryOne<{ n: string }>(`SELECT COUNT(*) as n FROM notes WHERE TRIM(content) != ''`)
-  )!.n;
-  const thesisCount = (
-    await queryOne<{ n: string }>(`SELECT COUNT(*) as n FROM thesis_ideas`)
-  )!.n;
+  const row = await queryOne(`SELECT
+    (SELECT COUNT(*) FROM courses) AS courses,
+    (SELECT COUNT(*) FROM lessons) AS lessons,
+    (SELECT COUNT(*) FROM notes WHERE TRIM(content) != '') AS notes,
+    (SELECT COUNT(*) FROM thesis_ideas) AS ideas`);
   return {
-    courseCount: Number(courseCount),
-    lessonCount: Number(lessonCount),
-    noteCount: Number(noteCount),
-    thesisCount: Number(thesisCount),
+    courseCount: Number(row?.courses ?? 0),
+    lessonCount: Number(row?.lessons ?? 0),
+    noteCount: Number(row?.notes ?? 0),
+    thesisCount: Number(row?.ideas ?? 0),
   };
 }

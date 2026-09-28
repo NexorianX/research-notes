@@ -9,9 +9,11 @@ import { formatDate } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const stats = await getGlobalStats();
-  const courses = await listCourseCards();
-  const recent = await listLessonSummaries({ limit: 6 });
+  const [stats, courses, recent] = await Promise.all([
+    getGlobalStats(),
+    listCourseCards(),
+    listLessonSummaries({ limit: 6 }),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 md:px-8">
@@ -42,7 +44,9 @@ export default async function DashboardPage() {
                   <div>{c.lessonCount} 堂課</div>
                   <div>
                     最近上課日期：
-                    {c.lastLessonDate ? formatDate(c.lastLessonDate) : "尚無課程"}
+                    {c.lastLessonDate
+                      ? formatDate(c.lastLessonDate)
+                      : "尚無課程"}
                   </div>
                   <div>{c.noteCount} 則筆記</div>
                   <div>待複習：{c.needReviewCount}</div>
@@ -64,7 +68,10 @@ export default async function DashboardPage() {
           <h2 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
             最近課程
           </h2>
-          <Link href="/timeline" className="text-xs text-neutral-400 hover:underline">
+          <Link
+            href="/timeline"
+            className="text-xs text-neutral-400 hover:underline"
+          >
             查看學期時間軸 →
           </Link>
         </div>

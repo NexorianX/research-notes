@@ -12,23 +12,38 @@ function rowToNote(row: any): Note {
   };
 }
 
+export async function getNoteForLesson(lessonId: string): Promise<Note | null> {
+  const row = await queryOne(
+    `SELECT * FROM notes WHERE lesson_id=$1 ORDER BY created_at ASC LIMIT 1`,
+    [lessonId],
+  );
+  return row ? rowToNote(row) : null;
+}
+
 /** Each lesson has exactly one freeform Notes document (auto-saved). */
-export async function getOrCreateNoteForLesson(lessonId: string): Promise<Note> {
+export async function getOrCreateNoteForLesson(
+  lessonId: string,
+): Promise<Note> {
   const existing = await queryOne(
     `SELECT * FROM notes WHERE lesson_id = $1 ORDER BY created_at ASC LIMIT 1`,
-    [lessonId]
+    [lessonId],
   );
   if (existing) return rowToNote(existing);
   const id = nanoid();
   const now = new Date().toISOString();
   await query(
     `INSERT INTO notes (id, lesson_id, content, created_at, updated_at) VALUES ($1, $2, '', $3, $4)`,
-    [id, lessonId, now, now]
+    [id, lessonId, now, now],
   );
-  return rowToNote((await queryOne(`SELECT * FROM notes WHERE id = $1`, [id]))!);
+  return rowToNote(
+    (await queryOne(`SELECT * FROM notes WHERE id = $1`, [id]))!,
+  );
 }
 
-export async function saveNoteContent(lessonId: string, content: string): Promise<Note> {
+export async function saveNoteContent(
+  lessonId: string,
+  content: string,
+): Promise<Note> {
   const note = await getOrCreateNoteForLesson(lessonId);
   const now = new Date().toISOString();
   await query(`UPDATE notes SET content = $1, updated_at = $2 WHERE id = $3`, [
@@ -36,7 +51,9 @@ export async function saveNoteContent(lessonId: string, content: string): Promis
     now,
     note.id,
   ]);
-  return rowToNote((await queryOne(`SELECT * FROM notes WHERE id = $1`, [note.id]))!);
+  return rowToNote(
+    (await queryOne(`SELECT * FROM notes WHERE id = $1`, [note.id]))!,
+  );
 }
 
 export async function listAllNotesWithLesson() {
@@ -46,7 +63,7 @@ export async function listAllNotesWithLesson() {
      JOIN lessons l ON l.id = n.lesson_id
      JOIN courses c ON c.id = l.course_id
      WHERE TRIM(n.content) != ''
-     ORDER BY n.updated_at DESC`
+     ORDER BY n.updated_at DESC`,
   );
   return rows.map((r) => ({
     id: r.id,
