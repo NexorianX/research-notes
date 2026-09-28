@@ -609,7 +609,7 @@ function TranscriptView({
           <div key={i} className="flex gap-3">
             {line.time && (
               <span className="w-14 shrink-0 font-mono text-xs text-neutral-400">
-                {line.time}
+                {line.time}{line.endTime && <><br /><span>– {line.endTime}</span></>}
               </span>
             )}
             <div>

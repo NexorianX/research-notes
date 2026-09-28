@@ -47,6 +47,8 @@ export interface LessonSource {
 }
 
 export interface TranscriptLine {
+  sourceSegmentId?: string;
+  endTime?: string;
   time?: string;
   speaker?: string;
   text: string;
@@ -136,6 +138,7 @@ export interface NormalizedLessonSource {
   importStatus: ImportStatus;
   errorMessage?: string;
   title?: string | null;
+  duration?: string | null;
   summary?: string | null;
   transcript?: TranscriptLine[] | null;
   mindMap?: MindMapNode | { imageUrl: string } | null;

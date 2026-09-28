@@ -1,3 +1,4 @@
+import { fetchPublicShare } from "./doway-public";
 import type { Importer } from "@/services/importers/base";
 import type { NormalizedLessonSource, MindMapNode, TranscriptLine } from "@/lib/types";
 
@@ -206,6 +207,10 @@ export const dowayImporter: Importer = {
     }
 
     const { shareId } = parsed;
+    try {
+      const publicContent = await fetchPublicShare(shareId);
+      if (publicContent) return publicContent;
+    } catch { /* Continue this single import attempt with page fallbacks. */ }
     const canonicalUrl = `https://www.dowayai.com/share/${shareId}`;
 
     let extracted: ReturnType<typeof heuristicExtract> | null = null;

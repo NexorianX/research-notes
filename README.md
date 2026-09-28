@@ -17,6 +17,7 @@ Next.js / React / TypeScript / Tailwind CSS，使用 Supabase PostgreSQL（pg）
 - 不存在重新擷取 API、按鈕或背景同步工作。
 - 原始摘要、逐字稿與思維圖獨立於個人筆記保存。
 - 資料庫使用 `import_status` / `imported_at`，並相容舊版欄位遷移。
+- 優先使用分享頁公開資料介面，保存原始 Markdown、逐字稿起訖時間與來源段落 ID。來源思維圖使用摘要 Markdown，網站保存為可收合的樹狀結構。
 - 自動擷取依公開頁面資料而定。動態渲染需要執行環境具有可用的 Playwright Chromium；Vercel 未配置瀏覽器執行檔時會保留課堂並提供手動補件，不宣稱擷取成功。
 - 外部音檔 URL 目前未複製到自有 Storage，來源失效後不能保證播放。
 

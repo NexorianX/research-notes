@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { getCourse } from "@/lib/repo/courses";
-import { getLesson, getLessonContent, upsertLessonContent, upsertLessonSource } from "@/lib/repo/lessons";
+import { getLesson, getLessonContent, updateLesson, upsertLessonContent, upsertLessonSource } from "@/lib/repo/lessons";
 import { setTagsForLesson } from "@/lib/repo/tags";
 import { transaction } from "@/lib/db";
 import { detectProvider } from "@/services/importers";
@@ -55,6 +55,10 @@ export async function POST(req: Request) {
   let normalized;
   try { normalized = await importer.fetchAndNormalize(sourceUrl); }
   catch { normalized = { provider: "doway" as const, sourceUrl, externalId, importStatus: "FAILED" as const, errorMessage: "內容無法自動讀取，請手動補件。" }; }
+  await updateLesson(reservation.id, {
+    ...(!title?.trim() && normalized.title ? { title: normalized.title } : {}),
+    ...(normalized.duration ? { duration: normalized.duration } : {}),
+  });
   const content = await upsertLessonContent(reservation.id, normalized);
   const source = await upsertLessonSource(reservation.id, normalized);
   return NextResponse.json({ lesson: await getLesson(reservation.id), source, content,
