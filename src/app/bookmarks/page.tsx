@@ -9,7 +9,7 @@ export default async function BookmarksPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:px-8">
-      <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Bookmarks</h1>
+      <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">收藏</h1>
       <p className="mt-1 text-sm text-neutral-500">已收藏的課程</p>
 
       <div className="mt-6 space-y-2">
@@ -21,7 +21,7 @@ export default async function BookmarksPage() {
           >
             <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
               <span>{b.courseName}</span>
-              {b.week != null && <span>· Week {b.week}</span>}
+              {b.week != null && <span>· 第 {b.week}</span>}
               <span>· {formatDate(b.date)}</span>
             </div>
             <h3 className="mt-1 text-sm font-medium">{b.title}</h3>

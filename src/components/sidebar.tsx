@@ -71,16 +71,16 @@ function SidebarContent({
       <nav className="flex-1 space-y-4 overflow-y-auto px-2 pb-4">
         <div className="space-y-0.5">
           <NavLink href="/" icon={LayoutDashboard} onNavigate={onNavigate}>
-            Dashboard
+            課程總覽
           </NavLink>
           <NavLink href="/timeline" icon={Clock} onNavigate={onNavigate}>
-            Semester Timeline
+            學期時間軸
           </NavLink>
         </div>
 
         <div>
           <div className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">
-            Courses
+            課程
           </div>
           <div className="space-y-0.5">
             {courses.map((c) => (
@@ -98,22 +98,22 @@ function SidebarContent({
 
         <div className="space-y-0.5">
           <NavLink href="/notes" icon={StickyNote} onNavigate={onNavigate}>
-            Notes
+            個人筆記
           </NavLink>
           <NavLink href="/bookmarks" icon={Bookmark} onNavigate={onNavigate}>
-            Bookmarks
+            收藏
           </NavLink>
           <NavLink href="/thesis-ideas" icon={Lightbulb} onNavigate={onNavigate}>
-            Thesis Ideas
+            論文靈感
           </NavLink>
           <NavLink href="/tags" icon={TagIcon} onNavigate={onNavigate}>
-            Tags
+            標籤
           </NavLink>
           <NavLink href="/search" icon={Search} onNavigate={onNavigate}>
-            Search
+            搜尋
           </NavLink>
           <NavLink href="/settings" icon={Settings} onNavigate={onNavigate}>
-            Settings
+            設定
           </NavLink>
         </div>
       </nav>

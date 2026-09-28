@@ -1,4 +1,7 @@
 "use client";
+import { ImportDowayModal } from "@/components/import-doway-modal";
+import { StudyWorkspace } from "@/components/study-workspace";
+import type { StudyDocument } from "@/lib/study";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -44,6 +47,9 @@ import type {
 } from "@/lib/types";
 
 interface Props {
+  initialStudy: StudyDocument;
+  initialTab?: string;
+  searchQuery?: string;
   lesson: Lesson;
   course: Course;
   source: LessonSource | null;
@@ -63,6 +69,7 @@ const REVIEW_OPTIONS: { value: ReviewStatusValue; label: string }[] = [
 ];
 
 export function LessonDetailClient({
+  initialStudy, initialTab, searchQuery,
   lesson,
   course,
   source,
@@ -74,6 +81,14 @@ export function LessonDetailClient({
   initialThesisIdeas,
 }: Props) {
   const router = useRouter();
+  const [study, setStudy] = React.useState(initialStudy);
+  const [activeTab, setActiveTab] = React.useState(initialTab && ["study", "corrections", "practice", "overview", "summary", "mindmap", "transcript", "notes", "source"].includes(initialTab) ? initialTab : "overview");
+  const tabsRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const list = tabsRef.current;
+    const selected = list?.querySelector<HTMLElement>('[data-state="active"]');
+    if (list && selected) list.scrollLeft += selected.getBoundingClientRect().left - list.getBoundingClientRect().left - (list.clientWidth - selected.clientWidth) / 2;
+  }, [activeTab]);
 
   const [notes, setNotes] = React.useState(initialNoteContent);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -86,6 +101,7 @@ export function LessonDetailClient({
   const [thesisIdeas, setThesisIdeas] = React.useState(initialThesisIdeas);
   const [editOpen, setEditOpen] = React.useState(false);
   const [manualOpen, setManualOpen] = React.useState(false);
+  const [importOpen, setImportOpen] = React.useState(false);
   const [thesisDraft, setThesisDraft] = React.useState<{
     sourceType: string;
     sourceText: string;
@@ -165,9 +181,9 @@ export function LessonDetailClient({
     saveState === "error"
       ? "儲存失敗，請保留內容並再次編輯以儲存"
       : saveState === "saving"
-      ? "Saving..."
+      ? "儲存中…"
       : saveState === "saved" && lastSaved
-      ? `Saved · Last saved ${lastSaved.toLocaleTimeString("zh-TW", {
+      ? `已儲存 · ${lastSaved.toLocaleTimeString("zh-TW", {
           hour: "2-digit",
           minute: "2-digit",
         })}`
@@ -180,12 +196,13 @@ export function LessonDetailClient({
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
             <span>{course.name}</span>
-            {lesson.week != null && <span>· Week {lesson.week}</span>}
+            {lesson.week != null && <span>· 第 {lesson.week} 週</span>}
             <span>· {formatDate(lesson.date)}</span>
           </div>
           <h1 className="mt-1 text-xl font-semibold text-neutral-900 dark:text-neutral-100">
             {lesson.title}
           </h1>
+          {source && <Badge className="mt-2" variant={source.importStatus === "IMPORTED" ? "success" : source.importStatus === "FAILED" ? "danger" : "outline"}>{importStatusLabel(source.importStatus)}</Badge>}
           {source?.sourceUrl && (
             <p className="mt-1 text-xs text-neutral-400">
               來源:{providerLabel(source.provider)} · {source.sourceUrl}
@@ -219,31 +236,35 @@ export function LessonDetailClient({
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
         {/* Main content */}
         <div className="min-w-0">
-          <Tabs defaultValue="overview">
-            <TabsList className="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 sm:mx-0 sm:w-full sm:overflow-visible sm:px-0">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="summary">Summary</TabsTrigger>
-              <TabsTrigger value="mindmap">Mind Map</TabsTrigger>
-              <TabsTrigger value="transcript">Transcript</TabsTrigger>
-              <TabsTrigger value="notes">My Notes</TabsTrigger>
-              <TabsTrigger value="source">Source</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList ref={tabsRef} className="-mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 sm:mx-0 sm:w-full sm:overflow-x-auto sm:px-0">
+              <TabsTrigger value="overview">課程概覽</TabsTrigger>
+              <TabsTrigger value="corrections">逐字稿校訂</TabsTrigger>
+              <TabsTrigger value="study">學習筆記</TabsTrigger>
+              <TabsTrigger value="practice">複習測驗</TabsTrigger>
+              <TabsTrigger value="summary">摘要</TabsTrigger>
+              <TabsTrigger value="mindmap">思維圖</TabsTrigger>
+              <TabsTrigger value="transcript">逐字稿</TabsTrigger>
+              <TabsTrigger value="notes">我的筆記</TabsTrigger>
+              <TabsTrigger value="source">來源與匯入</TabsTrigger>
             </TabsList>
 
+            {(["corrections", "study", "practice"] as const).map(mode => <TabsContent key={mode} value={mode} forceMount className="data-[state=inactive]:hidden"><StudyWorkspace lessonId={lesson.id} doc={study} setDoc={setStudy} lines={content?.transcript ?? []} mode={mode}/></TabsContent>)}
             <TabsContent value="overview">
               <div className="space-y-4 text-sm">
                 <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Field label="課程" value={course.name} />
                   <Field label="日期" value={formatDate(lesson.date)} />
-                  <Field label="Week" value={lesson.week != null ? String(lesson.week) : "—"} />
-                  <Field label="Title" value={lesson.title} />
-                  <Field label="Duration" value={lesson.duration ?? "—"} />
-                  <Field label="Review" value={reviewLabel(reviewStatus)} />
+                  <Field label="週次" value={lesson.week != null ? String(lesson.week) : "—"} />
+                  <Field label="標題" value={lesson.title} />
+                  <Field label="時長" value={lesson.duration ?? "—"} />
+                  <Field label="複習狀態" value={reviewLabel(reviewStatus)} />
                 </dl>
                 {source?.sourceUrl && (
                   <Field label="原始網址" value={source.sourceUrl} mono />
                 )}
                 <div>
-                  <div className="mb-1 text-xs font-medium text-neutral-400">Tags</div>
+                  <div className="mb-1 text-xs font-medium text-neutral-400">標籤</div>
                   <div className="flex flex-wrap gap-1">
                     {tags.length === 0 && <span className="text-xs text-neutral-400">尚無標籤</span>}
                     {tags.map((t) => (
@@ -254,13 +275,13 @@ export function LessonDetailClient({
                   </div>
                 </div>
                 <div>
-                  <div className="mb-1 text-xs font-medium text-neutral-400">Summary Preview</div>
+                  <div className="mb-1 text-xs font-medium text-neutral-400">摘要預覽</div>
                   <p className="text-neutral-600 dark:text-neutral-300">
-                    {content?.summary ? content.summary.slice(0, 200) + "…" : "尚無 Summary"}
+                    {content?.summary ? content.summary.slice(0, 200) + "…" : "尚無摘要"}
                   </p>
                 </div>
                 <div>
-                  <div className="mb-1 text-xs font-medium text-neutral-400">我的 Notes Preview</div>
+                  <div className="mb-1 text-xs font-medium text-neutral-400">個人筆記預覽</div>
                   <p className="whitespace-pre-wrap text-neutral-600 dark:text-neutral-300">
                     {notes ? notes.slice(0, 200) : "尚未撰寫筆記"}
                   </p>
@@ -269,6 +290,7 @@ export function LessonDetailClient({
             </TabsContent>
 
             <TabsContent value="summary">
+              <p className="mb-3 text-xs text-neutral-500">以下為來源整理摘要；整理學習筆記時，請以逐字稿與錄音核對。</p>
               {content?.summary ? (
                 <SelectableBlock
                   onAddToNotes={insertQuoteIntoNotes}
@@ -300,6 +322,7 @@ export function LessonDetailClient({
             <TabsContent value="transcript">
               {content?.transcript && content.transcript.length > 0 ? (
                 <TranscriptView
+                  initialQuery={searchQuery}
                   lines={content.transcript}
                   onAddToNotes={insertQuoteIntoNotes}
                   onAddThesisIdea={(text) =>
@@ -320,7 +343,7 @@ export function LessonDetailClient({
             <TabsContent value="notes">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-neutral-400">
-                  <span>My Notes（自動儲存，支援 Markdown）</span>
+                  <span>我的筆記（自動儲存，支援 Markdown）</span>
                   <span>{saveLabel}</span>
                 </div>
                 <Textarea
@@ -328,7 +351,7 @@ export function LessonDetailClient({
                   onChange={(e) => handleNotesChange(e.target.value)}
                   rows={16}
                   placeholder={
-                    "# 標題\n- 重點一\n- 重點二\n\n> 引用 Transcript 內容\n我的想法：..."
+                    "# 標題\n- 重點一\n- 重點二\n\n> 引用逐字稿內容\n我的想法：..."
                   }
                   className="font-mono text-sm"
                 />
@@ -350,7 +373,7 @@ export function LessonDetailClient({
                   value={source ? providerLabel(source.provider) : "無"}
                 />
                 <Field label="原始網址" value={source?.sourceUrl || "無"} mono />
-                <Field label="External ID" value={source?.externalId || "無"} />
+                <Field label="來源編號" value={source?.externalId || "無"} />
                 <Field
                   label="匯入狀態"
                   value={source ? importStatusLabel(source.importStatus) : "無"}
@@ -359,14 +382,16 @@ export function LessonDetailClient({
                   label="匯入時間"
                   value={source?.importedAt ? formatDateTime(source.importedAt) : "尚未匯入"}
                 />
+                {source?.importStatus && <p className="rounded-md border p-3 text-sm">{source.importStatus === "PENDING" ? "尚未擷取內容。請按「匯入課程錄音」，貼上此課堂的原始網址完成首次匯入。" : source.importStatus === "PARTIAL" || source.importStatus === "FAILED" ? "首次擷取已結束。請開啟原始頁面取得缺漏內容，再使用下方「手動補件」；既有內容會保留。" : "來源已保存；校訂請至「逐字稿校訂」，整理重點請至「學習筆記」。"}</p>}
                 {source?.errorMessage && (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
                     {source.errorMessage}
                   </div>
                 )}
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {source?.importStatus === "PENDING" && <Button size="sm" onClick={() => setImportOpen(true)}>開始首次匯入</Button>}
                   <Button variant="outline" size="sm" onClick={() => setManualOpen(true)}>
-                    手動貼上 Summary / Transcript
+                    手動補件（摘要／逐字稿）
                   </Button>
                 </div>
               </div>
@@ -383,6 +408,7 @@ export function LessonDetailClient({
                 {thesisIdeas.map((idea) => (
                   <div
                     key={idea.id}
+                    id={`idea-${idea.id}`}
                     className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800"
                   >
                     {idea.sourceText && (
@@ -409,16 +435,16 @@ export function LessonDetailClient({
 
         {/* Context panel */}
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <PanelSection title="Course">
+          <PanelSection title="課程">
             <p className="text-sm">{course.name}</p>
           </PanelSection>
-          <PanelSection title="Week / Date">
+          <PanelSection title="週次／日期">
             <p className="text-sm">
-              {lesson.week != null ? `Week ${lesson.week} · ` : ""}
+              {lesson.week != null ? `第 ${lesson.week} 週 · ` : ""}
               {formatDate(lesson.date)}
             </p>
           </PanelSection>
-          <PanelSection title="Review">
+          <PanelSection title="複習狀態">
             <Select value={reviewStatus} onValueChange={(v) => changeReviewStatus(v as ReviewStatusValue)}>
               <SelectTrigger>
                 <SelectValue />
@@ -432,12 +458,12 @@ export function LessonDetailClient({
               </SelectContent>
             </Select>
           </PanelSection>
-          <PanelSection title="Bookmark">
+          <PanelSection title="收藏">
             <Button variant="outline" size="sm" className="w-full" onClick={toggleBookmark}>
               {bookmarked ? "取消收藏" : "加入收藏"}
             </Button>
           </PanelSection>
-          <PanelSection title="Tags">
+          <PanelSection title="標籤">
             <div className="flex flex-wrap gap-1">
               {tags.length === 0 && <span className="text-xs text-neutral-400">無</span>}
               {tags.map((t) => (
@@ -447,12 +473,12 @@ export function LessonDetailClient({
               ))}
             </div>
           </PanelSection>
-          <PanelSection title="Source">
+          <PanelSection title="來源與匯入">
             <p className="text-xs text-neutral-500">
               {source ? importStatusLabel(source.importStatus) : "無來源"}
             </p>
           </PanelSection>
-          <PanelSection title="Notes">
+          <PanelSection title="筆記">
             <p className="text-xs text-neutral-500">
               {notes.trim() ? `${notes.trim().length} 字` : "尚未撰寫"}
             </p>
@@ -471,10 +497,12 @@ export function LessonDetailClient({
         }}
       />
 
+      <ImportDowayModal courses={[course]} open={importOpen} onOpenChange={setImportOpen} defaultCourseId={course.id} defaultUrl={source?.sourceUrl ?? undefined} defaultDate={lesson.date} defaultWeek={lesson.week}/>
       <ManualContentDialog
         open={manualOpen}
         onOpenChange={setManualOpen}
         lessonId={lesson.id}
+        hasTranscript={!!content?.transcript?.length}
         initialSummary={content?.summary ?? ""}
         onSaved={() => router.refresh()}
       />
@@ -559,15 +587,17 @@ function SelectableBlock({
 }
 
 function TranscriptView({
+  initialQuery,
   lines,
   onAddToNotes,
   onAddThesisIdea,
 }: {
+  initialQuery?: string;
   lines: TranscriptLine[];
   onAddToNotes: (text: string) => void;
   onAddThesisIdea: (text: string) => void;
 }) {
-  const [query, setQuery] = React.useState("");
+  const [query, setQuery] = React.useState(initialQuery ?? "");
 
   function highlight(text: string) {
     if (!query.trim()) return text;
@@ -585,15 +615,15 @@ function TranscriptView({
   }
 
   const filtered = query.trim()
-    ? lines.filter((l) => l.text.toLowerCase().includes(query.toLowerCase()))
-    : lines;
+    ? lines.map((line,index)=>({line,index})).filter(({line}) => line.text.toLowerCase().includes(query.toLowerCase()))
+    : lines.map((line,index)=>({line,index}));
 
   return (
     <SelectableBlock onAddToNotes={onAddToNotes} onAddThesisIdea={onAddThesisIdea}>
       <div className="mb-3 flex items-center gap-2">
         <SearchIcon className="h-4 w-4 text-neutral-400" />
         <Input
-          placeholder="搜尋 Transcript…"
+          placeholder="搜尋逐字稿…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-xs"
@@ -607,8 +637,8 @@ function TranscriptView({
         </Button>
       </div>
       <div className="space-y-3 text-sm">
-        {filtered.map((line, i) => (
-          <div key={i} className="flex gap-3">
+        {filtered.map(({line, index}) => (
+          <div id={`segment-${index}`} key={index} className="flex gap-3 scroll-mt-6 rounded-md p-2 target:bg-amber-50 target:ring-2 target:ring-amber-400 dark:target:bg-amber-950">
             {line.time && (
               <span className="w-14 shrink-0 font-mono text-xs text-neutral-400">
                 {line.time}{line.endTime && <><br /><span>– {line.endTime}</span></>}
@@ -708,7 +738,7 @@ function EmptyState({
       <p>{pending ? "目前只保存課堂紀錄，尚未執行首次匯入。請使用「匯入課程錄音」並貼上原始網址。" : "內容目前無法自動讀取。原始連結已保存，課程已成功建立。"}</p>
       <p className="mt-1 text-xs">
         這是一次性擷取，沒有自動重抓機制:你可以手動貼上
-        {kind === "summary" ? "Summary" : "Transcript"}，或開啟{ORIGINAL_PAGE_LABEL}查看。
+        {kind === "summary" ? "摘要" : "逐字稿"}，或開啟{ORIGINAL_PAGE_LABEL}查看。
       </p>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
         <Button variant="outline" size="sm" onClick={onManual}>
@@ -784,7 +814,7 @@ function EditLessonDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>編輯 Lesson</DialogTitle>
+          <DialogTitle>編輯課堂</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
@@ -797,12 +827,12 @@ function EditLessonDialog({
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Week</Label>
+              <Label>週次</Label>
               <Input type="number" value={week} onChange={(e) => setWeek(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Duration</Label>
+            <Label>時長</Label>
             <Input
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
@@ -810,7 +840,7 @@ function EditLessonDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label>Tags</Label>
+            <Label>標籤</Label>
             <Input value={tagStr} onChange={(e) => setTagStr(e.target.value)} />
           </div>
           <div className="flex justify-end pt-2">
@@ -828,18 +858,20 @@ function ManualContentDialog({
   open,
   onOpenChange,
   lessonId,
-  initialSummary,
+  initialSummary, hasTranscript,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   lessonId: string;
   initialSummary: string;
+  hasTranscript: boolean;
   onSaved: () => void;
 }) {
   const [summary, setSummary] = React.useState(initialSummary);
   const [transcript, setTranscript] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState("");
 
   React.useEffect(() => {
     if (open) setSummary(initialSummary);
@@ -847,30 +879,35 @@ function ManualContentDialog({
 
   async function handleSave() {
     setSaving(true);
-    await fetch(`/api/lessons/${lessonId}/manual-content`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ summary, transcript: transcript || undefined }),
-    });
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
+    setError("");
+    try {
+      const res = await fetch(`/api/lessons/${lessonId}/manual-content`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ summary: initialSummary ? undefined : summary, transcript: hasTranscript ? undefined : transcript || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "補件儲存失敗");
+      onOpenChange(false); onSaved();
+    } catch (e) {setError(e instanceof Error ? e.message : "補件儲存失敗，請再試一次");}
+    finally {setSaving(false);}
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>手動貼上 Summary / Transcript</DialogTitle>
+          <DialogTitle>手動補件（摘要／逐字稿）</DialogTitle>
         </DialogHeader>
+        <p className="text-xs text-neutral-500">僅補入缺漏欄位，已有原文不覆寫。</p>
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label>Summary（支援 Markdown）</Label>
-            <Textarea rows={6} value={summary} onChange={(e) => setSummary(e.target.value)} />
+            <Label>摘要（支援 Markdown）</Label>
+            <Textarea disabled={!!initialSummary} rows={6} value={summary} onChange={(e) => setSummary(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Transcript（純文字）</Label>
-            <Textarea rows={6} value={transcript} onChange={(e) => setTranscript(e.target.value)} />
+            <Label>逐字稿（純文字）</Label>
+            <Textarea disabled={hasTranscript} placeholder={hasTranscript ? "已有原始逐字稿，請使用「逐字稿校訂」" : "貼上缺漏的原文"} rows={6} value={transcript} onChange={(e) => setTranscript(e.target.value)} />
           </div>
           <div className="flex justify-end pt-2">
             <Button onClick={handleSave} disabled={saving}>
@@ -916,7 +953,7 @@ function ThesisIdeaDialog({
             <Textarea rows={5} value={content} onChange={(e) => setContent(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Tags</Label>
+            <Label>標籤</Label>
             <Input value={tagStr} onChange={(e) => setTagStr(e.target.value)} />
           </div>
           <div className="flex justify-end pt-2">

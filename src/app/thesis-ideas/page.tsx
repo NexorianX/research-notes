@@ -12,7 +12,7 @@ export default async function ThesisIdeasPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:px-8">
       <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-        Thesis Ideas
+        論文靈感
       </h1>
       <p className="mt-1 text-sm text-neutral-500">所有課堂中收集的論文靈感</p>
 
@@ -50,7 +50,7 @@ export default async function ThesisIdeasPage() {
         ))}
         {ideas.length === 0 && (
           <p className="text-sm text-neutral-400">
-            尚無論文靈感。在 Lesson 的 Summary 或 Transcript 中選取文字即可加入。
+            尚無論文靈感。在課堂的摘要或逐字稿中選取文字即可加入。
           </p>
         )}
       </div>

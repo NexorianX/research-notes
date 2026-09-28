@@ -90,6 +90,20 @@ const SCHEMA_SQL = `
     updated_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS lesson_studies (
+    lesson_id TEXT PRIMARY KEY REFERENCES lessons(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    version INTEGER NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS study_revisions (
+    lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    data TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (lesson_id, version)
+  );
+
   CREATE TABLE IF NOT EXISTS notes (
     id TEXT PRIMARY KEY,
     lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,

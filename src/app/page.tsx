@@ -21,10 +21,10 @@ export default async function DashboardPage() {
       <p className="mt-1 text-sm text-neutral-500">本學期</p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Courses" value={stats.courseCount} />
-        <StatCard label="Lessons" value={stats.lessonCount} />
-        <StatCard label="Notes" value={stats.noteCount} />
-        <StatCard label="Thesis Ideas" value={stats.thesisCount} />
+        <StatCard label="課程" value={stats.courseCount} />
+        <StatCard label="課堂" value={stats.lessonCount} />
+        <StatCard label="個人筆記" value={stats.noteCount} />
+        <StatCard label="論文靈感" value={stats.thesisCount} />
       </div>
 
       <div className="mt-8">
@@ -39,12 +39,12 @@ export default async function DashboardPage() {
                   <CardTitle>{c.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  <div>{c.lessonCount} Lessons</div>
+                  <div>{c.lessonCount} 堂課</div>
                   <div>
                     最近上課日期：
                     {c.lastLessonDate ? formatDate(c.lastLessonDate) : "尚無課程"}
                   </div>
-                  <div>{c.noteCount} Notes</div>
+                  <div>{c.noteCount} 則筆記</div>
                   <div>待複習：{c.needReviewCount}</div>
                   <div>最後更新：{formatDate(c.updatedAt)}</div>
                 </CardContent>

@@ -1,3 +1,4 @@
+import { getStudy } from "@/lib/repo/study";
 import { notFound } from "next/navigation";
 import {
   getLesson,
@@ -15,11 +16,13 @@ import { LessonDetailClient } from "@/components/lesson-detail-client";
 export const dynamic = "force-dynamic";
 
 export default async function LessonDetailPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{tab?:string; q?:string}>;
 }) {
   const { id } = await params;
+  const navigation = await searchParams;
   const lesson = await getLesson(id);
   if (!lesson) notFound();
   const course = await getCourse(lesson.courseId);
@@ -35,6 +38,10 @@ export default async function LessonDetailPage({
 
   return (
     <LessonDetailClient
+      key={id}
+      initialStudy={await getStudy(id)}
+      initialTab={navigation.tab}
+      searchQuery={navigation.q}
       lesson={lesson}
       course={course}
       source={source}

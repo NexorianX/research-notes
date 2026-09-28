@@ -21,19 +21,22 @@ export function ImportDowayModal({
   courses,
   open,
   onOpenChange,
-  defaultCourseId,
+  defaultCourseId, defaultUrl, defaultDate, defaultWeek,
 }: {
   courses: Course[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultCourseId?: string;
+  defaultUrl?: string;
+  defaultDate?: string;
+  defaultWeek?: number | null;
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<Step>("form");
-  const [url, setUrl] = React.useState("");
+  const [url, setUrl] = React.useState(defaultUrl ?? "");
   const [courseId, setCourseId] = React.useState(defaultCourseId ?? courses[0]?.id ?? "");
-  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [week, setWeek] = React.useState("");
+  const [date, setDate] = React.useState(() => defaultDate ?? new Date().toISOString().slice(0, 10));
+  const [week, setWeek] = React.useState(defaultWeek != null ? String(defaultWeek) : "");
   const [title, setTitle] = React.useState("");
   const [tags, setTags] = React.useState("");
   const [progress, setProgress] = React.useState<{
@@ -162,7 +165,7 @@ export function ImportDowayModal({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="doway-week">Week</Label>
+                <Label htmlFor="doway-week">週次</Label>
                 <Input
                   id="doway-week"
                   type="number"
@@ -183,7 +186,7 @@ export function ImportDowayModal({
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="doway-tags">Tags（以空白或逗號分隔）</Label>
+              <Label htmlFor="doway-tags">標籤（以空白或逗號分隔）</Label>
               <Input
                 id="doway-tags"
                 placeholder="#電子商務 #重要"
@@ -214,9 +217,9 @@ export function ImportDowayModal({
             </div>
             {progress && (
               <ul className="space-y-1 text-sm text-neutral-600 dark:text-neutral-300">
-                <li>{progress.summary ? "✓" : "×"} Summary</li>
-                <li>{progress.mindMap ? "✓" : "×"} Mind Map</li>
-                <li>{progress.transcript ? "✓" : "×"} Transcript</li>
+                <li>{progress.summary ? "✓" : "×"} 摘要</li>
+                <li>{progress.mindMap ? "✓" : "×"} 思維圖</li>
+                <li>{progress.transcript ? "✓" : "×"} 逐字稿</li>
               </ul>
             )}
             <div className="flex justify-end gap-2 pt-2">
@@ -226,7 +229,7 @@ export function ImportDowayModal({
               <Button
                 onClick={() => {
                   onOpenChange(false);
-                  if (lessonId) router.push(`/lessons/${lessonId}`);
+                  if (lessonId) { router.push(`/lessons/${lessonId}`); router.refresh(); }
                 }}
               >
                 查看課程

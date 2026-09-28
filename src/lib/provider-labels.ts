@@ -26,8 +26,8 @@ export const IMPORT_ACTION_LABEL = "匯入";
 const IMPORT_STATUS_LABELS: Record<ImportStatus, string> = {
   PENDING: "待首次匯入",
   IMPORTING: "匯入中",
-  IMPORTED: "已匯入",
-  PARTIAL: "部分匯入",
+  IMPORTED: "匯入完成",
+  PARTIAL: "部分內容缺漏",
   FAILED: "匯入失敗",
   MANUAL: "手動建立",
 };

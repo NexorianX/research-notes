@@ -16,7 +16,7 @@ export default async function TagsPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:px-8">
-      <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Tags</h1>
+      <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">標籤</h1>
       <p className="mt-1 text-sm text-neutral-500">點擊標籤篩選課程</p>
 
       <div className="mt-4 flex flex-wrap gap-2">

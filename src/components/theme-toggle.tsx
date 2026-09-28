@@ -5,9 +5,9 @@ import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const OPTIONS = [
-  { value: "light", icon: Sun, label: "Light" },
-  { value: "dark", icon: Moon, label: "Dark" },
-  { value: "system", icon: Monitor, label: "System" },
+  { value: "light", icon: Sun, label: "淺色模式" },
+  { value: "dark", icon: Moon, label: "深色模式" },
+  { value: "system", icon: Monitor, label: "跟隨系統" },
 ] as const;
 
 export function ThemeToggle() {
