@@ -35,7 +35,7 @@ export const correctionSchema = z.object({
   segment: z.number().int().nonnegative(),
   original: z.string().min(1).max(20000),
   text: z.string().trim().min(1).max(20000),
-  reason: z.string().trim().min(1).max(1000),
+  reason: z.string().trim().max(1000).default(""),
   certainty: z.enum(["pending", "confirmed"]),
 });
 export const studySchema = z.object({

@@ -144,7 +144,7 @@ require.extensions[".ts"] = (m, f) =>
         await put({
           data: {
             items: [],
-            corrections: [{ ...data.corrections[0], reason: "" }],
+            corrections: [{ ...data.corrections[0], text: "" }],
           },
           version: 1,
         })
@@ -159,6 +159,14 @@ require.extensions[".ts"] = (m, f) =>
       ).status,
       404,
     );
+    const withoutReason = {...data, corrections: [{...data.corrections[0], reason: ""}]};
+    assert.equal((await put({data: withoutReason, version: 1})).status, 200);
+    const saved = await (await GET(new Request("http://localhost"), context)).json();
+    assert.equal(saved.data.corrections[0].reason, "");
+    assert.equal(saved.data.corrections[0].text, data.corrections[0].text);
+    const omittedReason = {...data.corrections[0]};
+    delete omittedReason.reason;
+    assert.equal((await put({data: {...data, corrections:[omittedReason]}, version: 2})).status, 200);
     const raw = (
       await query(
         "SELECT transcript FROM lesson_contents WHERE lesson_id='qa-lesson'",
@@ -179,7 +187,7 @@ require.extensions[".ts"] = (m, f) =>
     );
     assert.equal(
       (await query("SELECT count(*)::int AS n FROM study_revisions"))[0].n,
-      1,
+      3,
     );
     const matches = await globalSearch("Sprint", {
       courseId: "qa-course",

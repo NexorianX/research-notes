@@ -249,7 +249,7 @@ export function StudyWorkspace({ lessonId, doc, setDoc, lines, mode }: Props) {
             />
           </label>
           <label className="block">
-            修正依據
+            修正依據（選填）
             <Input
               aria-label="修正依據"
               placeholder="例如：回聽確認專有名詞；僅刪除重複贅字"
@@ -275,7 +275,7 @@ export function StudyWorkspace({ lessonId, doc, setDoc, lines, mode }: Props) {
             </select>
           </label>
           <Button
-            disabled={busy || !reason.trim() || !corrected.trim()}
+            disabled={busy || !corrected.trim()}
             onClick={() =>
               save({
                 ...doc.data,
@@ -314,7 +314,7 @@ export function StudyWorkspace({ lessonId, doc, setDoc, lines, mode }: Props) {
                 · {c.certainty === "confirmed" ? "已核對" : "待確認"}
               </span>
               <p className="whitespace-pre-wrap">{c.text}</p>
-              <p className="text-neutral-500">修正依據：{c.reason}</p>
+              {c.reason && <p className="text-neutral-500">修正依據：{c.reason}</p>}
               <details>
                 <summary>比對原文</summary>
                 <p>{c.original}</p>
