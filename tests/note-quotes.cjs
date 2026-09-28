@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript'),Module=require('node:module');
+const file=require.resolve('../src/lib/note-quotes.ts');const m=new Module(file,module);
+m._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,file);
+const {appendQuote}=m.exports;
+const first=appendQuote('我的原有想法','完整引用文字');
+assert.equal(first.added,true);
+assert.equal(appendQuote(first.content,'完整引用文字').added,false);
+assert.equal(appendQuote(first.content,'引用文字').added,true);
+assert.equal(appendQuote(first.content,'另一段引用').added,true);
+assert.equal(appendQuote(first.content,'').content,first.content);
+const multiline=appendQuote('','第一行\n第二行');
+assert.equal(appendQuote(multiline.content,'第一行 第二行').added,false);
+assert.equal(appendQuote(first.content+'我寫的評論','完整引用文字').content,first.content+'我寫的評論');
+let current=''; for(let i=0;i<10;i++) current=appendQuote(current,'相同引用').content;
+assert.equal((current.match(/相同引用/g)||[]).length,1);
+console.log('PASS: repeated clicks, whole-passage matching, multiline quotes, distinct excerpts and personal text preservation.');

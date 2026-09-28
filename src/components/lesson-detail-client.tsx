@@ -1,4 +1,5 @@
 "use client";
+import { appendQuote } from "@/lib/note-quotes";
 import { ImportDowayModal } from "@/components/import-doway-modal";
 import { StudyWorkspace } from "@/components/study-workspace";
 import type { StudyDocument } from "@/lib/study";
@@ -91,6 +92,8 @@ export function LessonDetailClient({
   }, [activeTab]);
 
   const [notes, setNotes] = React.useState(initialNoteContent);
+  const notesRef = React.useRef(initialNoteContent);
+  const [quoteMessage, setQuoteMessage] = React.useState("");
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,6 +130,7 @@ export function LessonDetailClient({
   );
 
   function handleNotesChange(value: string) {
+    notesRef.current = value;
     setNotes(value);
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -134,10 +138,9 @@ export function LessonDetailClient({
   }
 
   function insertQuoteIntoNotes(text: string) {
-    if (!text.trim()) return;
-    const block = `${text.trim().split("\n").map(line => `> ${line}`).join("\n")}\n\n我的想法：\n\n`;
-    const next = notes ? `${notes}\n\n${block}` : block;
-    handleNotesChange(next);
+    const result = appendQuote(notesRef.current, text);
+    if (result.added) handleNotesChange(result.content);
+    setQuoteMessage(result.added ? "引用已加入下方筆記" : "這段引用已在筆記中，未重複加入");
     setActiveTab("notes");
   }
 
@@ -343,6 +346,7 @@ export function LessonDetailClient({
             </TabsContent>
 
             <TabsContent value="notes">
+              {quoteMessage && <p role="status" className="mb-3 text-sm text-emerald-700 dark:text-emerald-400">{quoteMessage}</p>}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-neutral-400">
                   <span>我的筆記（自動儲存，支援 Markdown）</span>
