@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { getCourse } from "@/lib/repo/courses";
-import { getLesson, getLessonContent, updateLesson, upsertLessonContent, upsertLessonSource } from "@/lib/repo/lessons";
+import { getLesson, getLessonContent, getLessonSource, updateLesson, upsertLessonContent, upsertLessonSource } from "@/lib/repo/lessons";
 import { setTagsForLesson } from "@/lib/repo/tags";
 import { transaction } from "@/lib/db";
 import { detectProvider } from "@/services/importers";
@@ -31,25 +31,45 @@ export async function POST(req: Request) {
   // submissions return the saved lesson, including failed imports, without fetching.
   const reservation = await transaction(async (run) => {
     await run("SELECT pg_advisory_xact_lock(hashtext($1))", [`${courseId}:${externalId}`]);
-    const existing = await run(`SELECT l.id FROM lessons l JOIN lesson_sources s ON s.lesson_id = l.id
+    const existing = await run(`SELECT l.id, s.import_status,
+      EXISTS (SELECT 1 FROM lesson_contents c WHERE c.lesson_id = l.id AND
+        (NULLIF(c.summary, '') IS NOT NULL OR NULLIF(c.transcript, '') IS NOT NULL OR NULLIF(c.mind_map, '') IS NOT NULL OR NULLIF(c.audio_url, '') IS NOT NULL)) AS has_content
+      FROM lessons l JOIN lesson_sources s ON s.lesson_id = l.id
       WHERE l.course_id = $1 AND s.provider = 'doway' AND s.external_id = $2 LIMIT 1`, [courseId, externalId]);
-    if (existing[0]) return { id: String(existing[0].id), existing: true };
+    if (existing[0]) {
+      const saved = existing[0];
+      const id = String(saved.id);
+      // Only seed placeholders are eligible for their FIRST extraction. A real
+      // FAILED/PARTIAL/IMPORTED attempt never becomes eligible again.
+      if (saved.import_status !== "PENDING" || saved.has_content) return { id, existing: true };
+      const now = new Date().toISOString();
+      await run(`UPDATE lesson_sources SET import_status = 'FAILED', raw_data = $1,
+        error_message = $2, updated_at = $3 WHERE lesson_id = $4`,
+        [JSON.stringify({ attemptStartedAt: now }), "首次匯入尚未完成；若流程已結束，請手動補件。", now, id]);
+      await run(`UPDATE lessons SET date = $1, week = COALESCE($2, week),
+        title = COALESCE(NULLIF($3, ''), title), updated_at = $4 WHERE id = $5`,
+        [date, week ?? null, title?.trim() || "", now, id]);
+      return { id, existing: false };
+    }
     const id = nanoid();
     const now = new Date().toISOString();
     await run(`INSERT INTO lessons (id, course_id, week, date, title, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $6)`, [id, courseId, week ?? null, date, title?.trim() || `${course.name} ${date}`, now]);
     // Failed-until-complete ensures a terminated function never leaves a permanent loading state.
-    await run(`INSERT INTO lesson_sources (id, lesson_id, provider, source_url, external_id, import_status, error_message, created_at, updated_at)
-      VALUES ($1, $2, 'doway', $3, $4, 'FAILED', $5, $6, $6)`,
-      [nanoid(), id, sourceUrl, externalId, "內容尚未成功轉換；若匯入已結束，請手動補件。", now]);
+    await run(`INSERT INTO lesson_sources (id, lesson_id, provider, source_url, external_id, import_status, raw_data, error_message, created_at, updated_at)
+      VALUES ($1, $2, 'doway', $3, $4, 'FAILED', $5, $6, $7, $7)`,
+      [nanoid(), id, sourceUrl, externalId, JSON.stringify({ attemptStartedAt: now }), "內容尚未成功轉換；若匯入已結束，請手動補件。", now]);
     await run(`INSERT INTO review_status (id, lesson_id, status, updated_at) VALUES ($1, $2, 'NOT_REVIEWED', $3)`, [nanoid(), id, now]);
     return { id, existing: false };
   });
   if (reservation.existing) {
     const content = await getLessonContent(reservation.id);
-    return NextResponse.json({ lesson: await getLesson(reservation.id), content,
+    const source = await getLessonSource(reservation.id);
+    return NextResponse.json({ lesson: await getLesson(reservation.id), source, content, reused: true,
       progress: { summary: !!content?.summary, transcript: !!content?.transcript?.length, mindMap: !!content?.mindMap },
-      message: "此連結已建立課堂，直接開啟既有資料；缺漏內容請手動補件。" });
+      message: source?.importStatus === "IMPORTED"
+        ? "此課堂已匯入，直接開啟既有內容。"
+        : "此課堂已執行過匯入，缺漏內容請手動補件；不會重複擷取。" });
   }
   if (tags?.length) await setTagsForLesson(reservation.id, tags);
   let normalized;

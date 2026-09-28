@@ -24,6 +24,7 @@ export const ORIGINAL_PAGE_LABEL = "原始頁面";
 export const IMPORT_ACTION_LABEL = "匯入";
 
 const IMPORT_STATUS_LABELS: Record<ImportStatus, string> = {
+  PENDING: "待首次匯入",
   IMPORTING: "匯入中",
   IMPORTED: "已匯入",
   PARTIAL: "部分匯入",

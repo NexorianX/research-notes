@@ -5,7 +5,7 @@
  *
  * IMPORTANT: this script does NOT fabricate any Summary / Transcript /
  * Mind Map content. Every seeded lesson's content is left empty with
- * importStatus = "FAILED" (shown in the UI as "匯入失敗") exactly as the
+ * importStatus = "PENDING" (shown in the UI as "待首次匯入") exactly as the
  * spec requires — real content only ever comes from an actual import at
  * creation time, or from pasting/uploading it manually afterward (there
  * is no automatic re-fetch), never from this seed.
@@ -122,13 +122,13 @@ async function createLesson(courseId, date, title, sourceUrl, externalId) {
   await client.query(
     `INSERT INTO lesson_sources
        (id, lesson_id, provider, source_url, external_id, import_status, imported_at, raw_data, error_message, created_at, updated_at)
-     VALUES ($1, $2, 'doway', $3, $4, 'FAILED', NULL, NULL, $5, $6, $7)`,
+     VALUES ($1, $2, 'doway', $3, $4, 'PENDING', NULL, NULL, $5, $6, $7)`,
     [
       id(),
       lid,
       sourceUrl,
       externalId,
-      "課程錄音內容目前無法自動讀取。原始連結已保存，課程已成功建立。你可以手動貼上逐字稿/摘要，或開啟原始頁面查看。",
+      "已建立課堂紀錄，尚未執行首次匯入。",
       ts,
       ts,
     ]

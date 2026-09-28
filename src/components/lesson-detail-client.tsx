@@ -284,6 +284,7 @@ export function LessonDetailClient({
                 </SelectableBlock>
               ) : (
                 <EmptyState
+                  pending={source?.importStatus === "PENDING"}
                   lessonId={lesson.id}
                   sourceUrl={source?.sourceUrl}
                   kind="summary"
@@ -307,6 +308,7 @@ export function LessonDetailClient({
                 />
               ) : (
                 <EmptyState
+                  pending={source?.importStatus === "PENDING"}
                   lessonId={lesson.id}
                   sourceUrl={source?.sourceUrl}
                   kind="transcript"
@@ -690,10 +692,12 @@ function MindMapTree({ node, depth }: { node: { name: string; children?: { name:
 }
 
 function EmptyState({
+  pending,
   kind,
   sourceUrl,
   onManual,
 }: {
+  pending?: boolean;
   lessonId: string;
   sourceUrl?: string | null;
   kind: "summary" | "transcript";
@@ -701,7 +705,7 @@ function EmptyState({
 }) {
   return (
     <div className="rounded-md border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-500 dark:border-neutral-700">
-      <p>內容目前無法自動讀取。原始連結已保存，課程已成功建立。</p>
+      <p>{pending ? "目前只保存課堂紀錄，尚未執行首次匯入。請使用「匯入課程錄音」並貼上原始網址。" : "內容目前無法自動讀取。原始連結已保存，課程已成功建立。"}</p>
       <p className="mt-1 text-xs">
         這是一次性擷取，沒有自動重抓機制:你可以手動貼上
         {kind === "summary" ? "Summary" : "Transcript"}，或開啟{ORIGINAL_PAGE_LABEL}查看。

@@ -12,7 +12,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import type { Course } from "@/lib/types";
 
 type Step = "form" | "importing" | "done" | "error";
@@ -208,8 +208,8 @@ export function ImportDowayModal({
 
         {step === "done" && (
           <div className="flex flex-col gap-3 py-4">
-            <div className="flex items-center gap-2 text-emerald-600">
-              <CheckCircle2 className="h-5 w-5" />
+            <div className={`flex items-center gap-2 ${progress?.summary && progress?.transcript && progress?.mindMap ? "text-emerald-600" : "text-amber-600"}`}>
+              {progress?.summary && progress?.transcript && progress?.mindMap ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
               <span className="text-sm font-medium">{message}</span>
             </div>
             {progress && (

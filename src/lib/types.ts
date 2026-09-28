@@ -1,5 +1,6 @@
 export type LessonProvider = "doway" | "manual" | "upload";
 export type ImportStatus =
+  | "PENDING"
   | "IMPORTING"
   | "IMPORTED"
   | "PARTIAL"
