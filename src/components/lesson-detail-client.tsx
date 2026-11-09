@@ -1,4 +1,5 @@
 "use client";
+import { DeleteLessonButton } from "@/components/delete-lesson-button";
 import { appendQuote } from "@/lib/note-quotes";
 import { ImportDowayModal } from "@/components/import-doway-modal";
 import { StudyWorkspace } from "@/components/study-workspace";
@@ -231,6 +232,7 @@ export function LessonDetailClient({
               </a>
             </Button>
           )}
+          <DeleteLessonButton lessonId={lesson.id} title={lesson.title} courseId={course.id} onDeleted={() => { if (saveTimer.current) clearTimeout(saveTimer.current); }} />
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             <Pencil className="h-4 w-4" />
             編輯
